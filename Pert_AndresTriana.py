@@ -1,3 +1,4 @@
+import pandas as pd
 import matplotlib.pyplot as plt
 import networkx as nx
 
@@ -28,17 +29,47 @@ for actividad, datos in actividades.items():
 # Agregar aristas según predecesores
 for actividad, datos in actividades.items():
     for predecesor in datos['predecesores']:
-        G.add_edge(predecesor, actividad)
+        G.add_edge(predecesor, actividad, weight=datos['duracion'])
 
-# Calcular la ruta crítica
-ruta_critica = nx.algorithms.dag.dag_longest_path(G, weight='duracion')
+# Calcular la ruta crítica de acuerdo a la duración más larga
+ruta_critica = nx.algorithms.dag.dag_longest_path(G, weight='weight')
 
-# Usar layout con ajuste para que sea de izquierda a derecha
-pos = nx.spring_layout(G)
+# Calcular la duración mínima del proyecto (suma de las duraciones en la ruta crítica)
+duracion_minima = sum(actividades[actividad]['duracion'] for actividad in ruta_critica)
 
+# Calcular la duración máxima del proyecto (suma de todas las duraciones de todas las actividades)
+duracion_maxima = sum(actividades[actividad]['duracion'] for actividad in actividades)
 
-# Dibujar el grafo
+# Crear tabla de actividades y duraciones
+tabla_duraciones = pd.DataFrame({
+    'Actividad': [actividad for actividad in actividades],
+    'Duración (días)': [actividades[actividad]['duracion'] for actividad in actividades],
+    'Es parte de la ruta crítica': ['Sí' if actividad in ruta_critica else 'No' for actividad in actividades]
+})
+
+# Crear DataFrame con la fila de Totales
+fila_total = pd.DataFrame({
+    'Actividad': ['Total'],
+    'Duración (días)': [f'Mínima: {duracion_minima}, Máxima: {duracion_maxima}'],
+    'Es parte de la ruta crítica': ['']
+})
+
+# Usar pd.concat en lugar de append
+tabla_duraciones = pd.concat([tabla_duraciones, fila_total], ignore_index=True)
+
+# Mostrar la tabla
+print(tabla_duraciones)
+print(f"\nRuta crítica: {' -> '.join(ruta_critica)}")
+print(f"Duración mínima del proyecto (Ruta Crítica): {duracion_minima} días")
+
+# Dibujar el grafo con la ruta crítica
 plt.figure(figsize=(14, 10))
+
+# Ajustar layout 'spring' para que se vea de izquierda a derecha y fijar la semilla para reproducibilidad
+#pos = nx.spring_layout(G, k=1.5, scale=(2, 0.5), seed=42)
+pos = nx.shell_layout(G)
+
+
 
 # Dibujar todas las aristas normalmente
 nx.draw(G, pos, with_labels=True, node_size=2500, node_color='lightblue', font_size=12, font_weight='bold', arrows=True)
